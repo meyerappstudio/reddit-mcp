@@ -7,6 +7,7 @@ export const CONFIG_PATH = join(HOME, "config.json");
 export const QUEUE_PATH = join(HOME, "queue.json");
 export const LOCK_PATH = join(HOME, "queue.lock");
 export const LOG_PATH = join(HOME, "worker.log");
+export const DRAFTS_DIR = join(HOME, "drafts");
 export const REDIRECT_URI = "http://localhost:8765/callback";
 
 export type Config = {
@@ -31,4 +32,8 @@ export function saveConfig(cfg: Config) {
   ensureHome();
   writeFileSync(CONFIG_PATH, JSON.stringify(cfg, null, 2));
   chmodSync(CONFIG_PATH, 0o600);
+}
+
+export function hasApiAuth(): boolean {
+  try { return Boolean(loadConfig().refresh_token); } catch { return false; }
 }

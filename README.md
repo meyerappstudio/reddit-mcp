@@ -8,10 +8,20 @@ An MCP server that lets Claude Code (or any MCP client) browse subreddits, reply
 - **Browse and reply:** reads feeds, searches, reads full comment threads and your inbox, and replies now or on a schedule.
 - **Follow up:** lists your recent submissions with score, comment count and whether they were removed.
 
+## Two modes
+
+- **Assisted (works without Reddit API access):** Claude drafts the post or reply. A local draft page opens in your browser with the text ready to copy and a button to Reddit's submit page or the thread; the submit page comes prefilled where Reddit allows it. You review it and click Post. Scheduled assisted items show a macOS notification and open the draft at the scheduled time. You do the posting yourself, so nothing automates Reddit's site.
+- **API:** once you have an approved Reddit API app and run `npm run auth`, posts and replies publish directly, and the browsing tools work.
+
+Scheduling defaults to API mode once you're authorized and to assisted mode before that. Pass `mode` to override it.
+
 ## Tools
 
 | Tool | What it does |
 |---|---|
+| `reddit_draft_post` | Assisted: opens a draft page and Reddit's prefilled submit page |
+| `reddit_draft_reply` | Assisted: opens a draft page with the reply and a link to the thread |
+| `reddit_mark_posted` | Marks an assisted draft as posted, optionally with its link |
 | `reddit_whoami` | Shows the authorized account and its karma |
 | `reddit_subreddit_info` | Gets rules, post requirements, allowed post types and flair ids |
 | `reddit_submit_post` | Publishes immediately |
@@ -38,6 +48,8 @@ An MCP server that lets Claude Code (or any MCP client) browse subreddits, reply
 
 ## Setup
 
+For assisted mode only, run `npm install`, then do steps 3 and 4 below. API mode needs all four steps.
+
 ```sh
 git clone https://github.com/meyerappstudio/reddit-mcp && cd reddit-mcp
 npm install
@@ -59,12 +71,14 @@ Then ask Claude something like: *"Check r/SideProject's rules, then schedule thi
 - A post is marked `publishing` before the API call. If the process dies mid-call, the post stays `publishing` and is **not** retried, because Reddit may already have accepted it. Check `reddit_recent_posts`, then cancel or re-queue it.
 - If Reddit rejects a post (rules, rate limit, flair required), it's marked `failed` with Reddit's error. Fix it with `reddit_update_scheduled` and it's queued again.
 - The worker log is at `~/.reddit-mcp/worker.log`.
-- Set `REDDIT_MCP_HOME` to keep state somewhere else.
+- Assisted drafts are saved in `~/.reddit-mcp/drafts/` as HTML pages.
+- Set `REDDIT_MCP_HOME` to keep state somewhere else, and `REDDIT_MCP_NO_OPEN=1` to stop it opening pages or showing notifications (useful for tests).
 
 ## Limits
 
 - Image, video and gallery posts aren't supported yet; they need Reddit's media-upload flow.
 - One account per state directory.
+- Assisted mode can't read Reddit for you. Paste a thread link or its text into the chat so Claude can draft a reply.
 - The worker publishes within 5 minutes of `publish_at`, and only while the Mac is awake.
 
 ## Posting responsibly
