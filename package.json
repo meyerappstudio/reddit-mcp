@@ -1,0 +1,38 @@
+{
+  "name": "reddit-mcp",
+  "version": "0.1.0",
+  "description": "MCP server that lets Claude Code (or any MCP client) publish and schedule Reddit posts using your own Reddit API app.",
+  "main": "src/server.ts",
+  "scripts": {
+    "start": "node src/server.ts",
+    "auth": "node src/auth.ts",
+    "worker": "node src/worker.ts",
+    "install-worker": "sh scripts/install-worker.sh",
+    "uninstall-worker": "sh scripts/uninstall-worker.sh",
+    "typecheck": "tsc --noEmit"
+  },
+  "keywords": [
+    "mcp",
+    "reddit",
+    "claude",
+    "scheduler",
+    "model-context-protocol"
+  ],
+  "author": "",
+  "license": "MIT",
+  "type": "module",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.32.1",
+    "zod": "^4.6.6"
+  },
+  "bin": {
+    "reddit-mcp": "src/server.ts"
+  },
+  "engines": {
+    "node": ">=23.6"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.5",
+    "typescript": "^7.0.2"
+  }
+}
