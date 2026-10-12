@@ -7,7 +7,7 @@ import { execFile } from "node:child_process";
 import { CONFIG_PATH, REDIRECT_URI, loadConfig, saveConfig, type Config } from "./config.ts";
 import { exchangeToken } from "./reddit.ts";
 
-const SCOPES = "identity submit read flair history";
+const SCOPES = "identity submit read flair history edit privatemessages";
 
 const rl = createInterface({ input: process.stdin, output: process.stdout });
 let cfg: Config = existsSync(CONFIG_PATH) ? loadConfig() : { client_id: "" };

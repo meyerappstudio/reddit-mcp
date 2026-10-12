@@ -1,10 +1,11 @@
 # reddit-mcp
 
-An MCP server that lets Claude Code (or any MCP client) publish and schedule Reddit posts through **your own** Reddit API app. It's a self-hosted, single-account alternative to hosted connectors like Composio or Postiz: no third-party service holds your token.
+An MCP server that lets Claude Code (or any MCP client) browse subreddits, reply to threads, and publish or schedule Reddit posts through **your own** Reddit API app. It's a self-hosted, single-account alternative to hosted connectors like Composio or Postiz: no third-party service holds your token.
 
 - **Publish now:** text (self) and link posts, with flair, NSFW, spoiler and reply settings.
 - **Schedule:** posts go into a local queue, and a small launchd job publishes them when they're due. Claude Code doesn't need to be running.
 - **Check before posting:** reads a subreddit's rules, post requirements (title/body regex, required flair) and flair ids.
+- **Browse and reply:** reads feeds, searches, reads full comment threads and your inbox, and replies now or on a schedule.
 - **Follow up:** lists your recent submissions with score, comment count and whether they were removed.
 
 ## Tools
@@ -20,6 +21,14 @@ An MCP server that lets Claude Code (or any MCP client) publish and schedule Red
 | `reddit_cancel_scheduled` | Cancels a queued post |
 | `reddit_publish_due` | Publishes everything that's due right now |
 | `reddit_recent_posts` | Lists your recent submissions and how they're doing |
+| `reddit_list_posts` | Browses a subreddit feed (hot, new, top, rising) |
+| `reddit_search` | Searches posts on all of Reddit or in one subreddit |
+| `reddit_get_thread` | Reads a post and its comment tree from a URL or id |
+| `reddit_inbox` | Lists replies to your posts and comments |
+| `reddit_reply` | Replies to a post (`t3_`) or comment (`t1_`) immediately |
+| `reddit_schedule_reply` | Queues a reply; the queue tools manage it too |
+| `reddit_edit` | Edits your own comment or self post |
+| `reddit_delete` | Deletes your own comment or post |
 
 ## Requirements
 
@@ -34,7 +43,7 @@ git clone https://github.com/meyerappstudio/reddit-mcp && cd reddit-mcp
 npm install
 ```
 
-1. **Create a Reddit app** at <https://www.reddit.com/prefs/apps>. Choose the **installed app** type and set the redirect URI to `http://localhost:8765/callback`.
+1. **Create a Reddit app** at <https://www.reddit.com/prefs/apps>. Choose the **installed app** type and set the redirect URI to `http://localhost:8765/callback`. Reddit doesn't allow app names that contain "reddit". Since late 2025, Reddit has required approval for new API apps, so if the create button fails without an error, request API access from Reddit first.
 2. **Authorize:** run `npm run auth`, paste the client ID, then approve in the browser. This saves a refresh token to `~/.reddit-mcp/config.json` (mode 600).
 3. **Add it to Claude Code:**
    ```sh

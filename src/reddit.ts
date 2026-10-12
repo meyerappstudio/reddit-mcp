@@ -154,3 +154,111 @@ export async function recentPosts(limit = 10) {
     created: new Date(c.data.created_utc * 1000).toISOString(),
   }));
 }
+
+// ---- Browsing ----
+
+function summarizePost(d: any) {
+  return {
+    id: d.name, // t3_ fullname, usable as a reply parent
+    subreddit: d.subreddit,
+    title: d.title,
+    author: d.author,
+    score: d.score,
+    num_comments: d.num_comments,
+    created: new Date(d.created_utc * 1000).toISOString(),
+    flair: d.link_flair_text ?? undefined,
+    url: `https://www.reddit.com${d.permalink}`,
+    link: d.is_self ? undefined : d.url,
+    text: d.selftext ? d.selftext.slice(0, 1500) : undefined,
+  };
+}
+
+export async function listPosts(subreddit: string, sort = "hot", limit = 15, time = "week") {
+  const sr = normalizeSub(subreddit);
+  const q = new URLSearchParams({ limit: String(limit), raw_json: "1", ...(sort === "top" ? { t: time } : {}) });
+  const listing = await api(`/r/${sr}/${sort}?${q}`);
+  return listing.data.children.map((c: any) => summarizePost(c.data));
+}
+
+export async function search(query: string, subreddit?: string, sort = "relevance", time = "month", limit = 15) {
+  const q = new URLSearchParams({ q: query, sort, t: time, limit: String(limit), raw_json: "1", type: "link" });
+  const path = subreddit ? `/r/${normalizeSub(subreddit)}/search?${q}&restrict_sr=1` : `/search?${q}`;
+  const listing = await api(path);
+  return listing.data.children.map((c: any) => summarizePost(c.data));
+}
+
+export function postIdFrom(input: string) {
+  const m = input.match(/comments\/([a-z0-9]+)/i);
+  if (m) return m[1];
+  return input.replace(/^t3_/, "");
+}
+
+export async function getThread(postUrlOrId: string, limit = 50, depth = 4, sort = "top") {
+  const id = postIdFrom(postUrlOrId);
+  const q = new URLSearchParams({ limit: String(limit), depth: String(depth), sort, raw_json: "1" });
+  const [postListing, commentListing] = await api(`/comments/${id}?${q}`);
+  const comments: any[] = [];
+  const walk = (children: any[], level: number) => {
+    for (const c of children) {
+      if (c.kind !== "t1") continue;
+      const d = c.data;
+      comments.push({
+        id: d.name, // t1_ fullname, usable as a reply parent
+        parent_id: d.parent_id,
+        depth: level,
+        author: d.author,
+        score: d.score,
+        body: d.body,
+        created: new Date(d.created_utc * 1000).toISOString(),
+        is_mine: d.author === loadConfig().username,
+      });
+      if (d.replies?.data?.children) walk(d.replies.data.children, level + 1);
+    }
+  };
+  walk(commentListing.data.children, 0);
+  return { post: summarizePost(postListing.data.children[0].data), comments };
+}
+
+export async function inbox(limit = 25, unreadOnly = true) {
+  const listing = await api(`/message/${unreadOnly ? "unread" : "inbox"}?limit=${limit}&raw_json=1`);
+  return listing.data.children
+    .filter((c: any) => c.kind === "t1")
+    .map((c: any) => ({
+      id: c.data.name,
+      subreddit: c.data.subreddit,
+      author: c.data.author,
+      body: c.data.body,
+      context: `https://www.reddit.com${c.data.context}`,
+      created: new Date(c.data.created_utc * 1000).toISOString(),
+    }));
+}
+
+// ---- Replying ----
+
+export type CommentInput = { parent_id: string; text: string };
+
+function fullname(id: string) {
+  if (/^t[13]_/.test(id)) return id;
+  throw new Error(`parent_id must be a fullname like t3_abc (post) or t1_abc (comment); got ${id}`);
+}
+
+export async function reply(c: CommentInput): Promise<{ id: string; url: string }> {
+  const body = await api("/api/comment", { form: { api_type: "json", thing_id: fullname(c.parent_id), text: c.text } });
+  const errors = body?.json?.errors ?? [];
+  if (errors.length) throw new Error(`Reddit rejected the reply: ${JSON.stringify(errors)}`);
+  const d = body?.json?.data?.things?.[0]?.data;
+  if (!d) throw new Error(`Unexpected reply response: ${JSON.stringify(body).slice(0, 500)}`);
+  return { id: d.name, url: `https://www.reddit.com${d.permalink}` };
+}
+
+export async function editText(thingId: string, text: string) {
+  const body = await api("/api/editusertext", { form: { api_type: "json", thing_id: fullname(thingId), text } });
+  const errors = body?.json?.errors ?? [];
+  if (errors.length) throw new Error(`Reddit rejected the edit: ${JSON.stringify(errors)}`);
+  return { id: thingId, edited: true };
+}
+
+export async function deleteThing(thingId: string) {
+  await api("/api/del", { form: { id: fullname(thingId) } });
+  return { id: thingId, deleted: true };
+}

@@ -1,11 +1,16 @@
 import { readFileSync, writeFileSync, existsSync, openSync, closeSync, unlinkSync, statSync, renameSync, appendFileSync } from "node:fs";
 import { randomUUID } from "node:crypto";
 import { QUEUE_PATH, LOCK_PATH, LOG_PATH, ensureHome } from "./config.ts";
-import { submitPost, type PostInput } from "./reddit.ts";
+import { submitPost, reply, type PostInput } from "./reddit.ts";
 
 export type Status = "scheduled" | "publishing" | "published" | "failed" | "cancelled";
 
-export type QueuedPost = PostInput & {
+export type QueuedPost = Omit<PostInput, "subreddit" | "title"> & {
+  // "post" (default) submits a new post; "comment" replies to parent_id.
+  action?: "post" | "comment";
+  subreddit: string;
+  title?: string;
+  parent_id?: string;
   id: string;
   publish_at: string; // ISO UTC
   status: Status;
@@ -50,11 +55,12 @@ export function log(msg: string) {
   appendFileSync(LOG_PATH, `${new Date().toISOString()} ${msg}\n`);
 }
 
-export async function schedule(p: PostInput, publishAt: Date): Promise<QueuedPost> {
+export async function schedule(p: Partial<QueuedPost> & { subreddit: string }, publishAt: Date): Promise<QueuedPost> {
   return withLock(async () => {
     const q = read();
     const item: QueuedPost = {
       ...p,
+      action: p.action ?? "post",
       id: randomUUID().slice(0, 8),
       publish_at: publishAt.toISOString(),
       status: "scheduled",
@@ -72,7 +78,7 @@ export function list(includeDone = false): QueuedPost[] {
     .sort((a, b) => a.publish_at.localeCompare(b.publish_at));
 }
 
-export async function update(id: string, patch: Partial<PostInput> & { publish_at?: string }) {
+export async function update(id: string, patch: Partial<QueuedPost>) {
   return withLock(async () => {
     const q = read();
     const item = q.find((p) => p.id === id);
@@ -109,7 +115,9 @@ export async function publishDue(now = new Date()) {
       item.attempted_at = new Date().toISOString();
       write(q);
       try {
-        const r = await submitPost(item);
+        const r = item.action === "comment"
+          ? await reply({ parent_id: item.parent_id!, text: item.text ?? "" })
+          : await submitPost(item as PostInput);
         item.status = "published";
         item.published_url = r.url;
         log(`published ${item.id} r/${item.subreddit} ${r.url}`);
