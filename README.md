@@ -30,7 +30,7 @@ An MCP server that lets Claude Code (or any MCP client) publish and schedule Red
 ## Setup
 
 ```sh
-git clone https://github.com/<you>/reddit-mcp && cd reddit-mcp
+git clone https://github.com/meyerappstudio/reddit-mcp && cd reddit-mcp
 npm install
 ```
 
